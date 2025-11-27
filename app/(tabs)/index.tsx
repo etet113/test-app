@@ -1,6 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { StatusBar } from 'expo-status-bar';
-import React, { useState } from 'react';
+import React, { useCallback, useMemo, useRef, useState } from 'react';
 import {
   Animated,
   FlexAlignType,
@@ -27,7 +27,37 @@ import UcoinIcon from '@/assets/images/icons/tokens/ucoin.svg';
 import UsdcIcon from '@/assets/images/icons/tokens/usdc.svg';
 import UsdtIcon from '@/assets/images/icons/tokens/usdt.svg';
 
-const tokens = {
+type Token = {
+  name: string;
+  symbol: string;
+  balance: string;
+  usdValue: string;
+};
+
+const TOKEN_ICON_SIZE = 20;
+const MODAL_ICON_SIZE = 40;
+const AMOUNT_DECIMAL_PLACES = 5;
+const AMOUNT_REGEX = /^\d*\.?\d{0,3}$/;
+
+const iconMap: Record<string, React.ComponentType<{ width?: number; height?: number }>> = {
+  WBTC: BtcIcon,
+  ETH: EthIcon,
+  USDT: UsdtIcon,
+  USDC: UsdcIcon,
+  DOGE: DogeIcon,
+  UCOIN: UcoinIcon,
+};
+
+const currencyMap: Record<string, any> = {
+  USD: require('@/assets/images/icons/currencies/usd.png'),
+  JPY: require('@/assets/images/icons/currencies/jpy.png'),
+  HKD: require('@/assets/images/icons/currencies/hkd.png'),
+  GBP: require('@/assets/images/icons/currencies/gbp.png'),
+  CNY: require('@/assets/images/icons/currencies/rmb.png'),
+  EUR: require('@/assets/images/icons/currencies/eur.png'),
+};
+
+const tokens: Record<string, Token> = {
   wbtc: {
     name: 'WBTC',
     symbol: 'WBTC',
@@ -40,6 +70,19 @@ const tokens = {
     balance: '321.33',
     usdValue: '1.00',
   },
+};
+
+const getTokenIcon = (symbol: string, size: number = TOKEN_ICON_SIZE): React.ReactNode => {
+  if (iconMap[symbol]) {
+    const IconComponent = iconMap[symbol];
+    return <IconComponent width={size} height={size} />;
+  }
+
+  if (currencyMap[symbol]) {
+    return <Image source={currencyMap[symbol]} style={{ width: size, height: size }} resizeMode="contain" />;
+  }
+
+  return null;
 };
 
 function getDynamicStyles(isMobile: boolean, width: number) {
@@ -96,62 +139,41 @@ function getRowDynamicStyles(isMobile: boolean) {
 
 export default function HomeScreen() {
   const { isMobile, width } = useWindowDimensions();
-  const dynamicStyles = getDynamicStyles(isMobile, width);
-  const [fromToken, setFromToken] = useState({ ...tokens.wbtc, usdValue: '110554.89' });
-  const [toToken, setToToken] = useState({ ...tokens.usd, usdValue: '1.00' });
+  const dynamicStyles = useMemo(() => getDynamicStyles(isMobile, width), [isMobile, width]);
+  const [fromToken, setFromToken] = useState<Token>({ ...tokens.wbtc, usdValue: '110554.89' });
+  const [toToken, setToToken] = useState<Token>({ ...tokens.usd, usdValue: '1.00' });
   const [fromAmount, setFromAmount] = useState('0.005');
   const [showTokenModal, setShowTokenModal] = useState(false);
   const [selectingFor, setSelectingFor] = useState<'from' | 'to'>('from');
-  const slideAnim = React.useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(0)).current;
 
-  // Calculate toAmount based on usdValue
-  const calculateToAmount = (): string => {
-    if (!fromAmount || fromAmount === '') {
-      return '0';
-    }
+  const toAmount = useMemo(() => {
+    if (!fromAmount) return '0';
     const fromValue = parseFloat(fromAmount);
-    if (isNaN(fromValue)) {
-      return '0';
-    }
-    if (fromValue === 0) {
-      return '0';
-    }
+    if (isNaN(fromValue) || fromValue === 0) return '0';
     const fromUsdValue = parseFloat(fromToken.usdValue);
     const toUsdValue = parseFloat(toToken.usdValue);
-    const result = (fromValue * fromUsdValue) / toUsdValue;
-    return result.toFixed(5);
-  };
+    return ((fromValue * fromUsdValue) / toUsdValue).toFixed(AMOUNT_DECIMAL_PLACES);
+  }, [fromAmount, fromToken.usdValue, toToken.usdValue]);
 
-  const toAmount = calculateToAmount();
-
-  // Validate if preview button should be enabled
-  const isPreviewEnabled = (): boolean => {
-    if (!fromAmount || fromAmount === '') {
-      return false;
-    }
+  const previewEnabled = useMemo(() => {
+    if (!fromAmount) return false;
     const fromValue = parseFloat(fromAmount);
     const balance = parseFloat(fromToken.balance);
     return fromValue > 0 && fromValue <= balance;
-  };
+  }, [fromAmount, fromToken.balance]);
 
-  const previewEnabled = isPreviewEnabled();
-
-  const handleMaxPress = () => {
+  const handleMaxPress = useCallback(() => {
     setFromAmount(fromToken.balance);
-  };
+  }, [fromToken.balance]);
 
-  const handleSwap = () => {
-    // 交换 token
-    const tempToken = fromToken;
+  const handleSwap = useCallback(() => {
     setFromToken(toToken);
-    setToToken(tempToken);
-    
-    // 交换 amount
-    const tempAmount = fromAmount;
+    setToToken(fromToken);
     setFromAmount(toAmount);
-  };
+  }, [fromToken, toToken, toAmount]);
 
-  const openTokenModal = (forType: 'from' | 'to') => {
+  const openTokenModal = useCallback((forType: 'from' | 'to') => {
     setSelectingFor(forType);
     setShowTokenModal(true);
     Animated.spring(slideAnim, {
@@ -160,9 +182,9 @@ export default function HomeScreen() {
       tension: 50,
       friction: 7,
     }).start();
-  };
+  }, [slideAnim]);
 
-  const closeTokenModal = () => {
+  const closeTokenModal = useCallback(() => {
     Animated.timing(slideAnim, {
       toValue: 0,
       duration: 250,
@@ -170,10 +192,10 @@ export default function HomeScreen() {
     }).start(() => {
       setShowTokenModal(false);
     });
-  };
+  }, [slideAnim]);
 
-  const selectToken = (token: typeof tokenData[0]) => {
-    const tokenObj = {
+  const selectToken = useCallback((token: typeof tokenData[0]) => {
+    const tokenObj: Token = {
       name: token.symbol,
       symbol: token.symbol,
       balance: token.balance,
@@ -182,61 +204,33 @@ export default function HomeScreen() {
 
     if (selectingFor === 'from') {
       setFromToken(tokenObj);
-      setFromAmount(''); // Reset From input when token changes
+      setFromAmount('');
     } else {
       setToToken(tokenObj);
     }
     closeTokenModal();
-  };
+  }, [selectingFor, closeTokenModal]);
 
-  const getTokenIcon = (symbol: string) => {
-    const iconMap: Record<string, React.ComponentType<{ width?: number; height?: number }>> = {
-      WBTC: BtcIcon,
-      ETH: EthIcon,
-      USDT: UsdtIcon,
-      USDC: UsdcIcon,
-      DOGE: DogeIcon,
-      UCOIN: UcoinIcon,
-    };
+  const handleGetTokenIcon = useCallback((symbol: string) => {
+    return getTokenIcon(symbol, TOKEN_ICON_SIZE);
+  }, []);
 
-    const currencyMap: Record<string, any> = {
-      USD: require('@/assets/images/icons/currencies/usd.png'),
-      JPY: require('@/assets/images/icons/currencies/jpy.png'),
-      HKD: require('@/assets/images/icons/currencies/hkd.png'),
-      GBP: require('@/assets/images/icons/currencies/gbp.png'),
-      CNY: require('@/assets/images/icons/currencies/rmb.png'),
-      EUR: require('@/assets/images/icons/currencies/eur.png'),
-    };
-
-    if (iconMap[symbol]) {
-      const IconComponent = iconMap[symbol];
-      return <IconComponent width={20} height={20} />;
-    }
-
-    if (currencyMap[symbol]) {
-      return <Image source={currencyMap[symbol]} style={{ width: 20, height: 20 }} resizeMode="contain" />;
-    }
-
-    return null;
-  };
-
-  const handleAmountChange = (value: string) => {
-
-    if (value === '') {
-      setFromAmount('0');
+  const handleAmountChange = useCallback((value: string) => {
+    if (value === '' || value === '0') {
+      setFromAmount('');
       return;
     }
 
-    let processedValue = value;
-    if (value.startsWith('.')) {
-      processedValue = '0' + value;
-    }
-
-    const regex = /^\d*\.?\d{0,3}$/;
-    if (regex.test(processedValue)) {
+    const processedValue = value.startsWith('.') ? `0${value}` : value;
+    if (AMOUNT_REGEX.test(processedValue)) {
       setFromAmount(processedValue);
     }
-  };
+  }, []);
+
+  const exchangeRate = useMemo(() => {
+    const rate = parseFloat(fromToken.usdValue) / parseFloat(toToken.usdValue);
+    return `1 ${fromToken.name}: ${rate.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${toToken.name}`;
+  }, [fromToken, toToken]);
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -244,11 +238,12 @@ export default function HomeScreen() {
       <View style={[styles.container, dynamicStyles.container]}>
         <View style={[styles.header, dynamicStyles.header]}>
           <TouchableOpacity style={styles.backButton} activeOpacity={0.8}>
-            <Ionicons name="chevron-back" size={22} color="#fff" />
+            <Ionicons name="chevron-back" size={22} color={SwapColors.textMuted} />
             <Text style={styles.backText}>Back</Text>
           </TouchableOpacity>
-          <Text style={[styles.headerTitle, dynamicStyles.headerTitle]}>Swap</Text>
-          <View style={styles.headerSpacer} />
+          <View style={styles.titleContainer}>
+            <Text style={[styles.headerTitle, dynamicStyles.headerTitle]}>Swap</Text>
+          </View>
         </View>
 
         <View style={[styles.swapCard, dynamicStyles.swapCard]}>
@@ -263,7 +258,7 @@ export default function HomeScreen() {
             isMobile={isMobile}
             editable
             onTokenPress={() => openTokenModal('from')}
-            getTokenIcon={getTokenIcon}
+            getTokenIcon={handleGetTokenIcon}
           />
 
           <View style={styles.swapDivider}>
@@ -272,7 +267,7 @@ export default function HomeScreen() {
               activeOpacity={0.85}
               style={styles.swapIconContainer}
               onPress={handleSwap}>
-              <Ionicons name="swap-vertical" size={18} color="#f7f7f7" />
+              <Ionicons name="swap-vertical" size={18} color={SwapColors.textPrimary} />
             </TouchableOpacity>
             <View style={styles.dividerLine} />
           </View>
@@ -282,10 +277,10 @@ export default function HomeScreen() {
             token={toToken}
             amount={toAmount}
             rate={`Balance: ${toToken.balance}`}
-            exchangeRate={`1 ${fromToken.name}: ${(parseFloat(fromToken.usdValue) / parseFloat(toToken.usdValue)).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })} ${toToken.name}`}
+            exchangeRate={exchangeRate}
             isMobile={isMobile}
             onTokenPress={() => openTokenModal('to')}
-            getTokenIcon={getTokenIcon}
+            getTokenIcon={handleGetTokenIcon}
           />
         </View>
 
@@ -331,7 +326,7 @@ export default function HomeScreen() {
 
 type SwapRowProps = {
   label: string;
-  token: { name: string; symbol: string; usdValue?: string; balance?: string };
+  token: Token;
   amount: string;
   rate: string;
   showMax?: boolean;
@@ -372,7 +367,7 @@ function SwapRow({
           onPress={onTokenPress}>
           {getTokenIcon && getTokenIcon(token.symbol)}
           <Text style={[styles.tokenName, dynamicStyles.tokenName]}>{token.name}</Text>
-          <Ionicons name="chevron-down" size={16} color="#fff" />
+          <Ionicons name="chevron-down" size={16} color={SwapColors.textPrimary} />
         </TouchableOpacity>
         <View style={styles.amountContainer}>
           {editable ? (
@@ -417,34 +412,33 @@ const styles = StyleSheet.create({
     backgroundColor: SwapColors.background,
   },
   header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
     marginBottom: 24,
   },
   backButton: {
     flexDirection: 'row',
     alignItems: 'center',
+    marginBottom: 8,
   },
   backText: {
-    color: SwapColors.textPrimary,
+    color: SwapColors.textMuted,
     fontSize: 16,
     marginLeft: 4,
+  },
+  titleContainer: {
+    alignItems: 'center',
   },
   headerTitle: {
     color: SwapColors.textPrimary,
     fontSize: 26,
     fontWeight: '600',
-  },
-  headerSpacer: {
-    width: 60,
+    textAlign: 'center',
   },
   swapCard: {
     backgroundColor: SwapColors.surface,
     borderRadius: 24,
     padding: 20,
     borderWidth: 1,
-    borderColor: '#f7f7f7',
+    borderColor: SwapColors.textPrimary,
     shadowColor: '#000',
     shadowOpacity: 0.35,
     shadowOffset: { width: 0, height: 18 },
@@ -545,7 +539,7 @@ const styles = StyleSheet.create({
     borderRadius: 18,
     backgroundColor: '#050505',
     borderWidth: 1.5,
-    borderColor: '#f7f7f7',
+    borderColor: SwapColors.textPrimary,
     alignItems: 'center',
     justifyContent: 'center',
     marginHorizontal: 10,
@@ -566,7 +560,7 @@ const styles = StyleSheet.create({
     fontSize: 14,
   },
   feeValue: {
-    color: SwapColors.textPrimary,
+    color: SwapColors.textMuted,
     fontSize: 14,
     fontWeight: '600',
   },
@@ -687,36 +681,10 @@ function SelectTokenModal({ visible, onClose, onSelect, slideAnim, isMobile }: S
     outputRange: [600, 0],
   });
 
-  const getTokenIcon = (symbol: string) => {
-    const iconMap: Record<string, React.ComponentType<{ width?: number; height?: number }>> = {
-      WBTC: BtcIcon,
-      ETH: EthIcon,
-      USDT: UsdtIcon,
-      USDC: UsdcIcon,
-      DOGE: DogeIcon,
-      UCOIN: UcoinIcon,
-    };
-
-    const currencyMap: Record<string, any> = {
-      USD: require('@/assets/images/icons/currencies/usd.png'),
-      JPY: require('@/assets/images/icons/currencies/jpy.png'),
-      HKD: require('@/assets/images/icons/currencies/hkd.png'),
-      GBP: require('@/assets/images/icons/currencies/gbp.png'),
-      CNY: require('@/assets/images/icons/currencies/rmb.png'),
-      EUR: require('@/assets/images/icons/currencies/eur.png'),
-    };
-
-    if (iconMap[symbol]) {
-      const IconComponent = iconMap[symbol];
-      return <IconComponent width={40} height={40} />;
-    }
-
-    if (currencyMap[symbol]) {
-      return <Image source={currencyMap[symbol]} style={{ width: 40, height: 40 }} resizeMode="contain" />;
-    }
-
-    return <Text style={{ fontSize: 20 }}>{symbol}</Text>;
-  };
+  const handleGetTokenIcon = useCallback((symbol: string) => {
+    const icon = getTokenIcon(symbol, MODAL_ICON_SIZE);
+    return icon || <Text style={{ fontSize: 20 }}>{symbol}</Text>;
+  }, []);
 
   const formatValue = (usdValue: string): string => {
     const value = parseFloat(usdValue);
@@ -750,7 +718,7 @@ function SelectTokenModal({ visible, onClose, onSelect, slideAnim, isMobile }: S
                 style={styles.tokenItem}
                 onPress={() => onSelect(token)}>
                 <View style={styles.tokenIcon}>
-                  {getTokenIcon(token.symbol)}
+                  {handleGetTokenIcon(token.symbol)}
                 </View>
                 <View style={styles.tokenInfo}>
                   <Text style={styles.tokenFullName}>{token.name}</Text>
