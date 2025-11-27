@@ -10,10 +10,22 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    npm install
    ```
 
-2. Start the app
+2. Start the app (need select test device in terminal commands)
 
    ```bash
    npx expo start
+   ```
+   ## run android 
+   ```bash
+   npx expo run:android
+   ```
+   ## run ios (NO Mac device ,No runing test & setting)
+   ```bash
+   npx expo run:ios
+   ```
+   ## run web
+   ```bash
+   npx expo start --web
    ```
 
 In the output, you'll find options to open the app in a
@@ -32,19 +44,6 @@ When you're ready, run:
 ```bash
 npm run reset-project
 ```
-## run android 
-```bash
-npx expo run:android
-```
-## run ios (NO Mac device ,No runing test & setting)
-```bash
-npx expo run:ios
-```
-## run web
-```bash
-npx expo start --web
-```
-
 This command will move the starter code to the **app-example** directory and create a blank **app** directory where you can start developing.
 
 ## Learn more
