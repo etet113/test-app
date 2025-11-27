@@ -1,0 +1,13 @@
+[
+  { "id": "1", "symbol": "WBTC", "name": "Wrapped Bitcoin", "balance": "0.005", "usdValue": "110554.89" },
+  { "id": "2", "symbol": "ETH", "name": "Ethereum", "balance": "0.2", "usdValue": "4104.12" },
+  { "id": "3", "symbol": "USDT", "name": "Tether", "balance": "12345.89", "usdValue": "1.00" },
+  { "id": "4", "symbol": "USDC", "name": "USD Coin", "balance": "89.32", "usdValue": "1.00" },
+  { "id": "5", "symbol": "DOGE", "name": "Dogecoin", "balance": "1000.00", "usdValue": "0.19" },
+  { "id": "6", "symbol": "USD", "name": "US Dollar", "balance": "321.33", "usdValue": "1.00" },
+  { "id": "7", "symbol": "JPY", "name": "Japanese Yen", "balance": "683.76", "usdValue": "0.0066" },
+  { "id": "8", "symbol": "HKD", "name": "Hong Kong Dollar", "balance": "10608.84", "usdValue": "0.13" },
+  { "id": "9", "symbol": "GBP", "name": "British Pound", "balance": "177.64", "usdValue": "1.34" },
+  { "id": "10", "symbol": "CNY", "name": "Chinese Yuan", "balance": "449.46", "usdValue": "0.14" },
+  { "id": "11", "symbol": "EUR", "name": "Euro", "balance": "1049.69", "usdValue": "1.17" }
+]
