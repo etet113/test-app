@@ -32,14 +32,15 @@ When you're ready, run:
 ```bash
 npm run reset-project
 ```
-
+## run android 
 ```bash
 npx expo run:android
 ```
-
+## run ios (NO Mac device ,No runing test & setting)
 ```bash
-npx expo run:android
+npx expo run:ios
 ```
+## run web
 ```bash
 npx expo start --web
 ```
