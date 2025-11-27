@@ -15,15 +15,15 @@ This is an [Expo](https://expo.dev) project created with [`create-expo-app`](htt
    ```bash
    npx expo start
    ```
-   ## run android 
+   run android 
    ```bash
    npx expo run:android
    ```
-   ## run ios (NO Mac device ,No runing test & setting)
+   run ios (NO Mac device ,No runing test & setting)
    ```bash
    npx expo run:ios
    ```
-   ## run web
+   run web
    ```bash
    npx expo start --web
    ```
